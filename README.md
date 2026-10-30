@@ -14,12 +14,14 @@ A real, invitation-only web app for young adults pursuing career and learning go
 
 ```powershell
 npm ci
-Copy-Item .env.example .env.local
+if (!(Test-Path .env.local)) { Copy-Item .env.example .env.local }
 # Fill the three application values; configure Google in Supabase.
 npm run dev
 ```
 
 Use `APP_ORIGIN=http://localhost:3000` locally. The same code runs on Vercel with environment-specific variables. Missing/invalid values show `/setup`; no database/authentication fallback exists. Use a public `sb_publishable_...` key from Supabase's Connect/API Keys page. No service-role or secret key is needed by the app.
+
+The connected Circle project's local settings have already been retrieved through MCP and saved in ignored `.env.local`; preserve that file. Google provider credentials remain a separate dashboard setup step. The foundation migrations are already applied to that project; inspect history instead of rerunning them.
 
 ```powershell
 npm run typecheck
@@ -34,13 +36,13 @@ npm start
 
 Follow the **single dashboard checklist in [docs/SETUP.md](docs/SETUP.md)** for Supabase, Google OAuth, Vercel scopes, canonical URLs and migrations. The [.env.example](.env.example) has names and descriptions but no values. Do not commit `.env.local` or paste credentials into issues/chat. `AUTH_PROVIDER` is no longer required; remove any old `AUTH_PROVIDER=github` entry. Google client credentials are entered only in the Supabase dashboard.
 
-Apply `supabase/migrations/202610290001_foundation.sql` once to each intended project. Prefer migration-history deployment with the Supabase CLI as described in the setup guide. Never reset a populated database. The migration creates no users or initial circles.
+Apply the versioned files in `supabase/migrations/` in order through migration history. Circle's connected project is managed through MCP; inspect its history before applying anything. Never reset a populated database. Migrations create no users or initial circles. Checked-in versions match the timestamps assigned by MCP.
 
 ## Access model
 
 All profile fields are shared with members of the same circle; this is disclosed before saving/joining. Authentication emails and OAuth data stay in Supabase Auth, outside shared profiles. Only the profile owner can insert/edit their profile. Only actual members can read a circle or its memberships. A user may belong to multiple circles, each capped at six members.
 
-Circle/membership writes are restricted to narrowly scoped security-definer functions with a fixed search path. Circle creation and creator membership are atomic. Only the creator can generate/revoke invitations. Tokens contain two random UUIDs, are stored only as SHA-256 hashes, expire after seven days and grant membership only on explicit redemption by a signed-in user with a completed profile. New invitations revoke previous ones. Redemption is idempotent while the invitation is valid; expired/revoked codes fail even for existing members. Circle row locks serialize capacity checks and invite changes.
+Circle/membership writes use public invoker RPC wrappers around narrowly scoped security-definer implementations in the non-exposed `circle_private` schema, all with fixed search paths. Do not expose `circle_private` through the Data API. Circle creation and creator membership are atomic. Only the creator can generate/revoke invitations. Tokens contain two random UUIDs, are stored only as SHA-256 hashes, expire after seven days and grant membership only on explicit redemption by a signed-in user with a completed profile. New invitations revoke previous ones. Redemption is idempotent while the invitation is valid; expired/revoked codes fail even for existing members. Circle row locks serialize capacity checks and invite changes.
 
 Authentication callbacks use a configured canonical origin, never a forwarded-host header. Navigation targets are allowlisted. Vercel aliases redirect to the environment's canonical origin so PKCE cookies stay on the callback host. Server Actions require that exact origin. Protected routes and every mutation verify authentication independently; authenticated responses are not cached. Cookie-based access is removed on local sign-out; Supabase-issued JWTs already copied elsewhere retain their normal expiry semantics.
 

@@ -8,7 +8,7 @@ import {
   it,
 } from "vitest";
 import { PGlite } from "@electric-sql/pglite";
-import { readFileSync } from "node:fs";
+import { readFileSync, readdirSync } from "node:fs";
 
 // Disposable PostgreSQL engine, never an application database/fallback. No hosted accounts are created.
 const ids = Array.from(
@@ -58,15 +58,12 @@ beforeAll(async () => {
     grant usage on schema auth to anon, authenticated;
     grant execute on function auth.uid() to anon, authenticated;
   `);
-  await db.exec(
-    readFileSync(
-      new URL(
-        "../supabase/migrations/202610290001_foundation.sql",
-        import.meta.url,
-      ),
-      "utf8",
-    ),
-  );
+  const directory = new URL("../supabase/migrations/", import.meta.url);
+  for (const file of readdirSync(directory)
+    .filter((name) => name.endsWith(".sql"))
+    .sort()) {
+    await db.exec(readFileSync(new URL(file, directory), "utf8"));
+  }
 }, 30000);
 beforeEach(async () => {
   await db.exec("begin");
@@ -92,6 +89,16 @@ afterAll(async () => {
 });
 
 describe("database authorization and invitations", () => {
+  it("keeps privileged implementations outside the public API schema", async () => {
+    const exposed = await db.query(
+      "select p.proname from pg_proc p join pg_namespace n on n.oid=p.pronamespace where n.nspname='public' and p.prosecdef",
+    );
+    expect(exposed.rows).toHaveLength(0);
+    const access = await db.query<{ allowed: boolean }>(
+      "select has_schema_privilege('anon','circle_private','USAGE') as allowed",
+    );
+    expect(access.rows[0].allowed).toBe(false);
+  });
   it("atomically creates a circle and its creator membership", async () => {
     const circle = await newCircle();
     expect(

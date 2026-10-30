@@ -1,6 +1,10 @@
 # One-time setup and repeatable hosted testing
 
-No service project or deployment has been created by this checkout. Complete this checklist once; then use the same workflow for each change. Do not purchase services. If free allowances/access are insufficient, stop and report rather than silently upgrading.
+The owner has connected a project-scoped Supabase MCP for Circle. Use MCP first for inspection, existing migration history, database changes, debugging and retrieving the project URL/publishable key. The agent should write those public connection settings into ignored `.env.local` itself, using `APP_ORIGIN=http://localhost:3000` locally. Do not print keys or request privileged credentials. Keep Google OAuth credentials in the Supabase provider dashboard.
+
+The dashboard/CLI instructions below are reference alternatives, not tasks to hand back to the owner when MCP can safely perform them. First inspect what already exists; do not create a duplicate project or reapply migrations. If a specific setting is not supported by the connected MCP toolset, identify that limitation precisely before requesting the minimal remaining interaction. Do not purchase services or silently upgrade.
+
+**Circle's current state:** MCP connection and local `.env.local` are configured; `foundation` and `private_access` migrations are applied with local/history versions aligned (see STATUS.md). No users or application rows were seeded. The remaining immediate action is Google OAuth client setup/secret entry in step 5; Vercel settings apply when its actual deployment URLs are available. The current Supabase MCP tools support database operations and public settings retrieval but have no managed Auth-configuration update endpoint, so do not attempt to change Auth settings through SQL.
 
 ## 1. Create the required accounts and projects
 
@@ -26,7 +30,9 @@ supabase migration list
 
 `supabase init` creates optional local CLI configuration; review it before committing. The application does not require a local Docker stack. The migration file is already versioned in `supabase/migrations/`; do not generate a second copy. `db push` records successful versions and subsequent runs apply only unapplied migrations. Review the dry-run and back up existing valuable data before schema changes. Apply the same history to each project. Never use `db reset` on a populated project, delete history to rerun a migration, or edit an already applied migration; add a new forward migration for changes.
 
-Alternative without CLI: in **Supabase → SQL Editor**, review and run `202610290001_foundation.sql` once, within its transaction. Record the applied version in your deployment log. Do not rerun it: it deliberately fails on existing objects instead of silently skipping schema drift. Before later adopting CLI deployment, reconcile migration history using the official `supabase migration repair` workflow after verifying the schema, not by reapplying the file.
+For Circle, prefer MCP `list_migrations` and `apply_migration`, and keep local filenames aligned with the versions it assigns. Apply only missing versions. The foundation was first applied as `20261030164802_foundation.sql`; the original planning timestamp was renamed to match that actual history. Never apply both names as different migrations.
+
+Alternative without MCP/CLI: in **Supabase → SQL Editor**, review and run only unapplied files in `supabase/migrations/` in order, within their transactions. Record applied versions in your deployment log. Do not rerun them: they deliberately fail on existing objects instead of silently skipping schema drift. Before later adopting migration-history deployment, reconcile history using the official repair workflow after verifying the schema, not by reapplying files.
 
 ## 3. Import the existing repository in Vercel
 
