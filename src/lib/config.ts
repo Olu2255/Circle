@@ -5,7 +5,6 @@ export type AppConfig = {
   origin: string;
   supabaseUrl: string;
   publishableKey: string;
-  provider: "github";
 };
 
 export function readConfig(): { config: AppConfig | null; issues: string[] } {
@@ -40,14 +39,8 @@ export function readConfig(): { config: AppConfig | null; issues: string[] } {
     issues.push(
       "Set NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY to a public publishable key (never a secret key).",
     );
-  if (process.env.AUTH_PROVIDER !== "github")
-    issues.push(
-      "Confirm and configure GitHub sign-in, then set AUTH_PROVIDER=github.",
-    );
   return {
-    config: issues.length
-      ? null
-      : { origin, supabaseUrl, publishableKey, provider: "github" },
+    config: issues.length ? null : { origin, supabaseUrl, publishableKey },
     issues,
   };
 }

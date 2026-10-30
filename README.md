@@ -7,7 +7,7 @@ A real, invitation-only web app for young adults pursuing career and learning go
 - Next.js 16, TypeScript, Tailwind; Node **24.x**, npm lockfile committed.
 - Supabase Postgres + Auth using `@supabase/ssr`, cookie sessions, PKCE and verified claims. RLS enforces access independently of the UI.
 - Vercel hosting: `main` for Production; `foundation` for repeatable Preview testing.
-- GitHub OAuth is the proposed initial provider, pending the owner's confirmation and dashboard configuration. It avoids email-delivery setup. The application does not enable it implicitly: `AUTH_PROVIDER` must be set explicitly.
+- Google OAuth is the primary sign-in method, configured in Supabase. Provider-specific entry points are separate from shared cookie sessions, profiles and RLS. Email/password can use the same Supabase identities later; signup, confirmation, reset UI and SMTP setup are not enabled in this milestone.
 - Future AI: **Meta Model API directly**, using the owner's hackathon credits. No Together AI, Modal, AI placeholders or provider credentials in this milestone.
 
 ## Local development
@@ -15,7 +15,7 @@ A real, invitation-only web app for young adults pursuing career and learning go
 ```powershell
 npm ci
 Copy-Item .env.example .env.local
-# Fill the three application values and explicitly select the configured provider.
+# Fill the three application values; configure Google in Supabase.
 npm run dev
 ```
 
@@ -32,7 +32,7 @@ npm start
 
 ## Set up real services
 
-Follow the **single dashboard checklist in [docs/SETUP.md](docs/SETUP.md)** for Supabase, GitHub OAuth, Vercel scopes, canonical URLs and migrations. The [.env.example](.env.example) has names and descriptions but no values. Do not commit `.env.local` or paste credentials into issues/chat.
+Follow the **single dashboard checklist in [docs/SETUP.md](docs/SETUP.md)** for Supabase, Google OAuth, Vercel scopes, canonical URLs and migrations. The [.env.example](.env.example) has names and descriptions but no values. Do not commit `.env.local` or paste credentials into issues/chat. `AUTH_PROVIDER` is no longer required; remove any old `AUTH_PROVIDER=github` entry. Google client credentials are entered only in the Supabase dashboard.
 
 Apply `supabase/migrations/202610290001_foundation.sql` once to each intended project. Prefer migration-history deployment with the Supabase CLI as described in the setup guide. Never reset a populated database. The migration creates no users or initial circles.
 

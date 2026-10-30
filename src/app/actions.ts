@@ -1,11 +1,11 @@
 "use server";
 
-import { cookies, headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { requireProfile, requireUser } from "@/lib/auth";
 import { requireConfig } from "@/lib/config";
-import { authNextCookie, callbackUrl, safeNext } from "@/lib/redirects";
+import { safeNext } from "@/lib/redirects";
+import { checkOrigin } from "@/lib/action-origin";
 import { createClient } from "@/lib/supabase/server";
 import {
   circleSchema,
@@ -22,11 +22,6 @@ export type ActionState = {
   expiresAt?: string;
 };
 
-async function checkOrigin() {
-  const origin = (await headers()).get("origin");
-  if (origin !== requireConfig().origin)
-    throw new Error("Open Circle at its configured address and try again.");
-}
 const value = (form: FormData, key: string) => String(form.get(key) ?? "");
 const knownErrors = new Set([
   "Invitation is invalid, expired or revoked.",
@@ -36,36 +31,6 @@ const knownErrors = new Set([
 ]);
 function dbMessage(message: string, fallback: string) {
   return knownErrors.has(message) ? message : fallback;
-}
-
-export async function signIn(form: FormData) {
-  await checkOrigin();
-  const config = requireConfig();
-  const client = await createClient();
-  const next = safeNext(value(form, "next"));
-  (await cookies()).set(authNextCookie, next, {
-    httpOnly: true,
-    sameSite: "lax",
-    secure: config.origin.startsWith("https://"),
-    path: "/auth/callback",
-    maxAge: 600,
-  });
-  const { data, error } = await client.auth.signInWithOAuth({
-    provider: config.provider,
-    options: { redirectTo: callbackUrl(config.origin) },
-  });
-  if (error || !data.url)
-    redirect(`/login?error=provider&next=${encodeURIComponent(next)}`);
-  redirect(data.url);
-}
-
-export async function signOut() {
-  await checkOrigin();
-  const client = await createClient();
-  const { error } = await client.auth.signOut({ scope: "local" });
-  if (error) throw new Error("Sign-out failed. Please try again.");
-  revalidatePath("/", "layout");
-  redirect("/login?signedOut=1");
 }
 
 export async function saveProfile(

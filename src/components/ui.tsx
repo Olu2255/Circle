@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { ArrowUpRight, Circle as CircleIcon } from "lucide-react";
-import { signOut } from "@/app/actions";
+import { signOut } from "@/app/auth/actions";
 import { Navigation } from "./navigation";
 import { SignOutButton } from "./submit-button";
 export { Notice } from "./ui-notice";

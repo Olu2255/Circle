@@ -1,8 +1,8 @@
 import { redirect } from "next/navigation";
-import { ArrowUpRight, Github } from "lucide-react";
+import { ArrowUpRight, UsersRound } from "lucide-react";
 import { PublicShell, Notice } from "@/components/ui";
 import { SignInButton } from "@/components/submit-button";
-import { signIn } from "@/app/actions";
+import { signInWithGoogle } from "@/app/auth/actions";
 import { readConfig } from "@/lib/config";
 import { safeNext } from "@/lib/redirects";
 import { createClient } from "@/lib/supabase/server";
@@ -37,7 +37,7 @@ export default async function Login({
         </div>
         <section className="card auth-card">
           <div className="round-icon">
-            <Github size={24} />
+            <UsersRound size={24} />
           </div>
           <h2>Welcome to Circle</h2>
           <p>Sign in to create your profile and connect with your people.</p>
@@ -55,7 +55,7 @@ export default async function Login({
                 : undefined
             }
           />
-          <form action={signIn}>
+          <form action={signInWithGoogle}>
             <input type="hidden" name="next" value={next} />
             <SignInButton />
           </form>

@@ -15,9 +15,9 @@ A build alone verifies none of the real multi-user behavior below.
 
 ## Two-account hosted test
 
-Prerequisites: apply the migration, configure GitHub OAuth and exact origins, redeploy Vercel with correct env scopes, and confirm deployment protection allows both browsers. Use the stable **branch Preview URL** in STATUS.md. The owner and another actual participant each create/sign into their own real account. Do not create test accounts automatically.
+Prerequisites: apply the migration, configure Google OAuth and exact origins, redeploy Vercel with correct env scopes, and confirm deployment protection allows both browsers. Use the stable **branch Preview URL** in STATUS.md. The owner and another actual participant each sign in with their own real Google account. If Google's consent audience restricts testing, allowlist those existing accounts in Google Auth Platform. Do not create test accounts automatically.
 
-Use browser A (normal window) and browser B (a separate browser profile or private window). They must have independent cookie stores; two ordinary tabs do not count. With GitHub, ensure B is signed into its own provider account.
+Use browser A (normal window) and browser B (a separate browser profile or private window). They must have independent cookie stores; two ordinary tabs do not count. Select the correct Google account in each browser. The login page must say **Continue with Google**, with no GitHub or inactive email sign-in button.
 
 1. **Unauthenticated protection:** before sign-in, open `/profile`, `/circles`, and a circle URL once one exists. No profile or circle content should be returned; the user is redirected to sign-in. With missing env, expect setup instead of fake success.
 2. **A signs in:** complete OAuth on the canonical host. No profile or circle should already exist. Submit a real display name, current goal, experience, skills, timezone and at least one availability window. Confirm save and persistence after hard refresh. Check validation with blank/short fields, invalid timezone and overlapping windows.
@@ -30,6 +30,8 @@ Use browser A (normal window) and browser B (a separate browser profile or priva
 9. **Persistence:** hard-refresh both sessions; reopen the stable URL in each browser after closing/reopening. Profiles and circle membership must persist. Repeat after the access-token refresh interval to exercise Proxy refresh. Cookies may be cleared by private-window closure; that is expected, not a persistence guarantee for incognito sessions.
 10. **Sign-out:** sign out in B, then request `/circles/<id>` and `/profile` directly and hard-refresh. No protected data should be accessible. Browser back navigation must not yield a usable authenticated view; subsequent requests/actions must require sign-in. A remains signed in. Sign back in as B and confirm persistent membership.
 11. **Responsive/errors:** test at 390px and desktop width; keyboard navigation, visible focus, labels, loading states and copy feedback. If a clipboard operation is blocked, the selected text remains manually copyable. Provider/network/database failures must show errors, not successful empty responses.
+
+Repeat the sign-in → callback → refresh → sign-out steps on localhost, the stable Preview branch origin and Production once each is configured. Confirm callbacks remain on that environment and an invitation survives the sign-in/profile flow. Use the environment variable table in SETUP.md; never edit source URLs to switch environments. Email/password is prepared architecturally but not implemented or claimed tested.
 
 ## Direct hosted database checks (real account IDs only)
 

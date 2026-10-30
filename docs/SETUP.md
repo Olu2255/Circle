@@ -2,13 +2,13 @@
 
 No service project or deployment has been created by this checkout. Complete this checklist once; then use the same workflow for each change. Do not purchase services. If free allowances/access are insufficient, stop and report rather than silently upgrading.
 
-## 1. Choose authentication and projects
+## 1. Create the required accounts and projects
 
-Confirm **GitHub OAuth** (the implemented, proposed provider). Every participant needs their own GitHub account. Email sign-in instead is a separate setup decision and requires application changes; it is not silently offered as a fallback.
+Google OAuth is confirmed as Circle's primary sign-in method. You need accounts with [Supabase](https://supabase.com/dashboard), [Vercel](https://vercel.com/new) and [Google Cloud Console](https://console.cloud.google.com/). Use your existing GitHub account only to connect the repository to Vercel. Participants sign in with their own Google accounts; they do not need GitHub accounts. Do not create dummy accounts.
 
 In Supabase, create/select a Postgres project. Copy its **Project URL** and **publishable** key from Connect/API Keys into local configuration and Vercel later. Keep database passwords and privileged keys out of the app. Do not disable email verification or enable anonymous sign-ins.
 
-Recommended: separate preview and production Supabase projects. Apply migrations independently and configure one GitHub OAuth app per Supabase project. If using a single project for hackathon speed, set both Vercel scopes to that same project: **Preview, Production and local development then share accounts, circles and data. They are not isolated.** Avoid experimental/destructive migrations against shared data. Separate Vercel deployments alone provide no database isolation.
+Recommended: separate preview and production Supabase projects; local development can use the preview project. Apply migrations independently and configure Google for each project. For quickest hackathon setup, a single Supabase project is acceptable: set all environments to that project and register its one Supabase callback in Google. **Preview, Production and local development then share accounts, circles and data. They are not isolated.** Avoid experimental/destructive migrations against shared data. Separate Vercel deployments alone provide no database isolation. No Google Cloud compute deployment or service-account key is needed.
 
 ## 2. Apply the versioned migration
 
@@ -44,9 +44,8 @@ In **Vercel → Project → Settings → Environment Variables**, set:
 | `APP_ORIGIN`                           | Exact stable Production HTTPS origin  | Exact stable branch Preview HTTPS origin                 | `http://localhost:3000`               |
 | `NEXT_PUBLIC_SUPABASE_URL`             | Production project's API URL          | Preview project's API URL (or explicitly shared project) | Chosen project's API URL              |
 | `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | That project's public publishable key | That project's public publishable key                    | That project's public publishable key |
-| `AUTH_PROVIDER`                        | `github`, after provider setup        | `github`, after provider setup                           | `github`, after provider setup        |
 
-Set Preview variables specifically for `foundation`. If testing another branch, give it its own stable canonical origin rather than inheriting the wrong branch override. No `VERCEL_URL`/forwarded host fallback exists. URLs have no path; HTTPS is required except for localhost. The key must be a current `sb_publishable_...` key, not a legacy JWT or any privileged key.
+Those are the only three app variables required. Remove any legacy `AUTH_PROVIDER=github` entry; the primary provider is Google in code, identical across environments. Set Preview variables specifically for `foundation`. If testing another branch, give it its own stable canonical origin rather than inheriting the wrong branch override. No `VERCEL_URL`/forwarded host fallback exists. URLs have no path; HTTPS is required except for localhost. The key must be a current `sb_publishable_...` key, not a legacy JWT or any privileged key.
 
 Redeploy after environment changes; public variables are build-time values. `APP_ORIGIN` is server-only. Opening a hash-specific URL redirects to the canonical branch origin; start and finish login on that same origin in the same browser. `APP_ORIGIN` does not create a DNS alias: copy an actual assigned Vercel branch domain.
 
@@ -57,15 +56,21 @@ For **each Supabase project → Authentication → URL Configuration**:
 - **Site URL:** the exact canonical origin of its primary environment. With separate projects: Production project = Production origin; Preview project = Preview branch origin. With a shared project: Site URL = Production origin.
 - **Redirect URLs:** add exact entries `<production-origin>/auth/callback`, `<preview-branch-origin>/auth/callback` and `http://localhost:3000/auth/callback` only in the projects serving those environments. With separate projects, do not add unrelated environments. Do not use broad `*.vercel.app` wildcard redirects. The outbound callback is this exact path with no application query parameters; an allowlisted return destination is held in a ten-minute HttpOnly cookie and consumed after the PKCE exchange.
 
-For **GitHub → Settings → Developer settings → OAuth Apps → New OAuth App**:
+For **Google Cloud Console → select/create a project → Google Auth Platform**:
 
-- Homepage URL: the corresponding project's primary application origin.
-- **Authorization callback URL:** copy the URL shown in **Supabase → Authentication → Sign In / Providers → GitHub**, usually `https://<project-ref>.supabase.co/auth/v1/callback`. This is the **Supabase** callback, not Circle's `/auth/callback`.
-- Copy the OAuth Client ID and Client Secret directly into that Supabase GitHub provider's fields and enable the provider. The secret belongs only in Supabase, not Vercel, source, or `NEXT_PUBLIC` variables. Leave provider permissions at sign-in requirements; no repository access is needed.
+1. Configure **Branding** with the app name Circle, a support email and developer contact. Choose **External** audience for a consumer app. If the consent configuration restricts access while in Testing, authorize your own and the actual participant's Google email in Audience → Test users. This is an OAuth allowlist of real people, not creation of Circle or Google test accounts. Do not publish an unrestricted production audience until its consent/branding requirements are satisfied.
+2. In **Data Access**, use only `openid`, `userinfo.email` and `userinfo.profile`. No Gmail, Drive or Calendar permissions. Circle requests only `openid email profile`; it does not request offline Google access or store provider tokens for integrations.
+3. In **Clients → Create client**, choose **Web application**. For **Authorized JavaScript origins**, add `http://localhost:3000` and the actual stable Preview/Production origins that this client serves, without paths. You can create the client with localhost and add the Vercel origins after they are assigned.
+4. For **Authorized redirect URIs**, copy the callback shown in **Supabase → Authentication → Sign In / Providers → Google**, usually `https://<project-ref>.supabase.co/auth/v1/callback`. Add one URI per Supabase project served by this client, or use separate OAuth clients per environment. This is the **Supabase** callback, not Circle's `/auth/callback` and not the Vercel URL. Local Next.js also uses this hosted Supabase callback; no local Supabase/Docker callback is needed.
+5. Copy the OAuth **Client ID and Client Secret** directly into that Supabase project's **Google provider** fields and enable the provider. The secret belongs only in Supabase, not Vercel, `.env.local`, source, or `NEXT_PUBLIC` variables. Keep nonce/email-verification protections enabled. If GitHub was configured previously, it is no longer offered by Circle; it can be disabled in the Supabase dashboard without deleting existing users.
 
-The route is GitHub → Supabase callback → Circle `/auth/callback` → allowlisted app destination. Supabase handles provider verification; Circle exchanges the PKCE code for a real cookie session. No account is pre-created by the app, and no profile is created until that person submits it.
+The route is Google → Supabase callback → Circle `/auth/callback` → allowlisted app destination. Supabase handles provider verification; Circle exchanges the PKCE code for a real cookie session. No account is pre-created by the app, and no profile is created until that person submits it. Credentials and callback origins differ by configuration only; no source edits are required between local, Preview and Production.
 
-**Email restrictions:** Supabase's hosted default SMTP restricts delivery to project-team addresses and has low rate limits. If email sign-in is later chosen for external participants, configure verified custom SMTP and its sender in Supabase and implement the appropriate verified flow first. Never disable verification or rely on unrestricted default delivery. GitHub OAuth avoids auth-email delivery for this milestone.
+### Email/password readiness
+
+`src/app/auth/actions.ts` owns the authentication entry points; all methods use the same `createClient`, verified sessions, `auth.users.id`, profiles and RLS. No database changes or alternative password store are needed to add Supabase `signInWithPassword` and verified signup. Google OAuth is the only visible sign-in method today. Do not add inert email buttons.
+
+Before enabling email/password publicly, add real signup, sign-in, email confirmation and password-reset flows with validated origins, configure a verified SMTP sender in Supabase, and retain email verification. The default hosted SMTP restricts recipients to project-team addresses and has low rate limits. Passwords belong only in Supabase Auth, never profiles. Avoid custom identity merging/linking by email. Google OAuth currently needs no SMTP setup.
 
 ## 6. Allow real participants through Vercel protection
 
@@ -85,7 +90,8 @@ For this initial empty repository, `main` and `foundation` may start at the same
 ## Reference documentation
 
 - [Supabase SSR client and Proxy](https://supabase.com/docs/guides/auth/server-side/creating-a-client?framework=nextjs)
-- [Supabase GitHub provider](https://supabase.com/docs/guides/auth/social-sign-in/auth-github)
+- [Supabase Google provider](https://supabase.com/docs/guides/auth/social-sign-in/auth-google)
+- [Google web OAuth client setup](https://developers.google.com/identity/protocols/oauth2/web-server#creatingcred)
 - [Supabase SMTP restrictions](https://supabase.com/docs/guides/auth/auth-smtp)
 - [Vercel generated branch URLs](https://vercel.com/docs/deployments/generated-urls)
 - [Supabase migration workflow](https://supabase.com/docs/guides/deployment/database-migrations)

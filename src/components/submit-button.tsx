@@ -6,7 +6,7 @@ export function SignInButton() {
   const { pending } = useFormStatus();
   return (
     <button className="button w-full" disabled={pending}>
-      {pending ? "Connecting…" : "Continue with GitHub"}
+      {pending ? "Connecting…" : "Continue with Google"}
       <ArrowRight size={18} />
     </button>
   );
